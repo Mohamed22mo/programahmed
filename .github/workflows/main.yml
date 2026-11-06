@@ -8,33 +8,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
     steps:
     - uses: actions/checkout@v4
     - name: Unzip project
-      run: unzip -o ./*.zip -x ".github/*"
-    - name: Add app icon
+      run: unzip -o programahmed_project_v2.zip -x ".github/*"
+    - name: Decode keystore
+      if: env.KEYSTORE_BASE64 != ''
       run: |
-        mkdir -p app/src/main/res/drawable
-        cat > app/src/main/res/drawable/ic_launcher.xml <<'XML'
-        <vector xmlns:android="http://schemas.android.com/apk/res/android"
-            android:width="96dp" android:height="96dp"
-            android:viewportWidth="96" android:viewportHeight="96">
-            <path android:fillColor="#1976D2"
-                android:pathData="M48,48m-48,0a48,48 0 1,1 96,0a48,48 0 1,1 -96,0"/>
-            <path android:fillColor="#FFFFFF"
-                android:pathData="M30,34h36v8h-36z M30,48h36v8h-36z M30,62h24v8h-24z"/>
-        </vector>
-        XML
-        sed -i 's#@mipmap/ic_launcher_round#@drawable/ic_launcher#; s#@mipmap/ic_launcher#@drawable/ic_launcher#' app/src/main/AndroidManifest.xml
+        echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+        echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
     - uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
     - uses: gradle/actions/setup-gradle@v4
       with:
-        gradle-version: '8.2'
-    - run: gradle assembleDebug --no-daemon
+        gradle-version: '8.14.3'
+    - run: gradle assembleDebug bundleRelease --no-daemon
     - uses: actions/upload-artifact@v4
       with:
-        name: Programahmed-Debug-APK
+        name: Debug-APK
         path: app/build/outputs/apk/debug/*.apk
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Release-AAB
+        path: app/build/outputs/bundle/release/*.aab
